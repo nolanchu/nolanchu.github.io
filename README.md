@@ -1,5 +1,4 @@
 # Nolan Chu
-=========
 
 nolan.chu.2012 \_at\_ gmail.com  
 [www.github.com/nolanchu](http://www.github.com/nolanchu)
