@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plaid OAuth Redirect</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 0 16px;
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #111;
+    }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 14px;
+    }
+    .muted { color: #555; }
+    .box {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      background: #fafafa;
+      overflow-wrap: anywhere;
+    }
+    button {
+      padding: 8px 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Plaid OAuth Redirect</h1>
+  <p class="muted">
+    This page is used only to complete Plaid OAuth redirects for Nolan Net Worth Tracker.
+  </p>
+
+  <div id="status" class="box">Processing redirect...</div>
+
+  <p id="copy-wrap" style="display:none;">
+    <button id="copy-btn">Copy redirect URL</button>
+  </p>
+
+  <script>
+    (function () {
+      const fullUrl = window.location.href;
+      const statusEl = document.getElementById("status");
+      const copyWrap = document.getElementById("copy-wrap");
+      const copyBtn = document.getElementById("copy-btn");
+
+      try {
+        // Save the full returned redirect URI so a local linker app can read it later if needed.
+        localStorage.setItem("plaid_received_redirect_uri", fullUrl);
+
+        // Optional: if your local linking app sets this, bounce back automatically.
+        // Example value: http://localhost:8000/plaid/oauth-return
+        const returnTo = localStorage.getItem("plaid_return_to");
+
+        if (returnTo) {
+          const separator = returnTo.includes("?") ? "&" : "?";
+          const nextUrl =
+            returnTo +
+            separator +
+            "received_redirect_uri=" +
+            encodeURIComponent(fullUrl);
+
+          statusEl.textContent = "Redirect received. Returning to local app...";
+          window.location.replace(nextUrl);
+          return;
+        }
+
+        statusEl.innerHTML = `
+          Redirect received successfully.<br><br>
+          No local callback was configured, so the redirect URL has been saved in your browser as
+          <code>plaid_received_redirect_uri</code>.<br><br>
+          You can also copy the full URL below and paste it into your local linker if needed.
+          <br><br>
+          <code>${fullUrl.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>
+        `;
+        copyWrap.style.display = "block";
+
+        copyBtn.addEventListener("click", async function () {
+          try {
+            await navigator.clipboard.writeText(fullUrl);
+            copyBtn.textContent = "Copied";
+          } catch (err) {
+            copyBtn.textContent = "Copy failed";
+          }
+        });
+      } catch (err) {
+        statusEl.textContent =
+          "OAuth redirect page loaded, but there was an error storing or forwarding the redirect URL: " +
+          String(err);
+      }
+    })();
+  </script>
+</body>
+</html>
