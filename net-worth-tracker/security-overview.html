@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Security Overview - Nolan Net Worth Tracker</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <main class="wrapper">
+    <a href="index.html">&larr; Back to application page</a>
+    <h1>Security Overview</h1>
+    <p class="note">Last updated: 2026-03-18</p>
+
+    <section class="card section-card">
+      <p>
+        Nolan Net Worth Tracker uses layered technical and administrative controls intended to protect linked-account data,
+        application secrets, and administrative access.
+      </p>
+    </section>
+
+    <h2>Identity and access management</h2>
+    <section class="card section-card">
+      <ul>
+        <li>Administrative access is restricted to authorized accounts and protected with multi-factor authentication.</li>
+        <li>Role-based access control is used to limit privileges to the minimum needed. In the current deployment, administrative access is limited to the owner-admin role.</li>
+        <li>Access to code hosting, automation, and provider dashboards is managed through centralized account-management controls offered by the relevant platforms.</li>
+        <li>Access is reviewed periodically, and credentials or privileges are removed or modified promptly when no longer needed.</li>
+        <li>Non-human authentication relies on provider-managed credentials, OAuth tokens, API keys, and secret storage controls.</li>
+      </ul>
+    </section>
+
+    <h2>Application and network security</h2>
+    <section class="card section-card">
+      <ul>
+        <li>Data is transmitted between clients, providers, and hosted components using TLS 1.2 or better.</li>
+        <li>Data is stored on systems that apply encryption at rest and restricted administrative access.</li>
+        <li>Secrets are stored separately from source code and are not committed to the public-facing website.</li>
+        <li>The application applies zero-trust principles by requiring authenticated, least-privilege access for administrative operations.</li>
+      </ul>
+    </section>
+
+    <h2>Monitoring and vulnerability management</h2>
+    <section class="card section-card">
+      <ul>
+        <li>Security issues are monitored through provider tooling, dependency alerts, and vulnerability-scanning controls available to the application environment.</li>
+        <li>Identified vulnerabilities are patched within defined internal timelines based on severity and operational impact.</li>
+        <li>Software components are reviewed for end-of-life status and updated or replaced when necessary.</li>
+      </ul>
+    </section>
+
+    <h2>Published documents</h2>
+    <section class="card section-card">
+      <ul>
+        <li><a href="information-security-policy.pdf">Information Security Policy (PDF)</a></li>
+        <li><a href="access-controls-policy.pdf">Access Controls Policy (PDF)</a></li>
+        <li><a href="privacy-policy.html">Privacy Policy</a></li>
+        <li><a href="data-retention-policy.html">Data Retention and Deletion Policy</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

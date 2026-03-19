@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data Retention Policy - Nolan Net Worth Tracker</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <main class="wrapper">
+    <a href="index.html">&larr; Back to application page</a>
+    <h1>Data Retention and Deletion Policy</h1>
+    <p class="note">Last updated: 2026-03-18</p>
+
+    <section class="card section-card">
+      <p>
+        This policy describes how Nolan Net Worth Tracker retains and deletes the limited financial and operational data used by the application.
+      </p>
+    </section>
+
+    <h2>Retention principles</h2>
+    <section class="card section-card">
+      <ul>
+        <li>Only the minimum data needed for net worth tracking and secure operation is retained.</li>
+        <li>Historical snapshot data is retained to preserve the accuracy of long-term net worth charts and change calculations.</li>
+        <li>Access tokens, secrets, and connection artifacts are retained only while an active linked-account connection is needed.</li>
+      </ul>
+    </section>
+
+    <h2>Typical retention categories</h2>
+    <section class="card section-card">
+      <div class="kv">
+        <div><strong>Historical snapshot data</strong></div><div>Retained until deleted by the operator or until the application is discontinued, because the purpose of the application is to preserve historical net worth records.</div>
+        <div><strong>Provider access tokens and related secrets</strong></div><div>Retained only while needed to maintain connected-account access. Tokens are deleted or rotated when access is revoked, when credentials are replaced, or when compromise is suspected.</div>
+        <div><strong>Operational logs</strong></div><div>Retained only as long as reasonably necessary for troubleshooting, monitoring, and security review.</div>
+        <div><strong>Backups or repository history</strong></div><div>Where data is captured in backups or version history, removal from active storage may occur before removal from backup media or historical copies, which are removed through normal platform retention cycles.</div>
+      </div>
+    </section>
+
+    <h2>Deletion process</h2>
+    <section class="card section-card">
+      <ul>
+        <li>Connected-account access artifacts can be removed when a connection is revoked or when the application is retired.</li>
+        <li>Stored snapshot data can be deleted from active storage by the operator.</li>
+        <li>Credentials and secrets are rotated promptly when exposure or misuse is suspected.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
