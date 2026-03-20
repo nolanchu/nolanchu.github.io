@@ -17,7 +17,6 @@
     deltas: $("deltas"),
     historyMeta: $("history-meta"),
     historyChart: $("history-chart"),
-    donutChart: $("donut-chart"),
     moversTable: $("movers-table"),
     instBreakdown: $("institution-breakdown"),
     metrics: $("metrics"),
@@ -27,7 +26,6 @@
 
   let cached = null;
   let historyChartInstance = null;
-  let donutChartInstance = null;
   const MIN_CAGR_DAYS = 90;
 
   function esc(value) {
@@ -218,70 +216,6 @@
     });
   }
 
-  function renderDonut(categories) {
-    if (!categories || !categories.length) {
-      chartUnavailable(el.donutChart, "No allocation data.");
-      return;
-    }
-    if (!window.Chart) {
-      chartUnavailable(el.donutChart, "Chart.js did not load, so the allocation chart is unavailable.");
-      return;
-    }
-
-    const palette = ["#1a6b5a", "#2d9b7a", "#72c4a8", "#c0392b", "#e6a03e", "#8e7cc3"];
-
-    if (donutChartInstance) donutChartInstance.destroy();
-    donutChartInstance = new Chart(el.donutChart, {
-      type: "doughnut",
-      data: {
-        labels: categories.map((item) => item.label),
-        datasets: [
-          {
-            data: categories.map((item) => Math.abs(item.amount)),
-            backgroundColor: categories.map((_, index) => palette[index % palette.length]),
-            borderWidth: 2,
-            borderColor: "#fff",
-            hoverOffset: 6,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        cutout: "68%",
-        plugins: {
-          legend: {
-            position: "bottom",
-            labels: {
-              padding: 16,
-              usePointStyle: false,
-              boxWidth: 12,
-              boxHeight: 12,
-              useBorderRadius: true,
-              borderRadius: 999,
-              font: { family: "'DM Sans', sans-serif", size: 12 },
-              color: "#555",
-            },
-          },
-          tooltip: {
-            backgroundColor: "#1a1a1a",
-            bodyColor: "#fff",
-            bodyFont: { family: "'DM Mono', monospace", size: 13 },
-            padding: 10,
-            cornerRadius: 8,
-            displayColors: true,
-            callbacks: {
-              label: (ctx) => {
-                const category = categories[ctx.dataIndex];
-                return ` ${category.label}: ${money(category.amount)} (${pct(category.share_pct)})`;
-              },
-            },
-          },
-        },
-      },
-    });
-  }
-
   function renderMovers(items) {
     if (!items || !items.length) {
       el.moversTable.innerHTML =
@@ -421,7 +355,6 @@
     renderHero(payload);
     renderDeltas(payload);
     renderHistoryChart(payload.series || []);
-    renderDonut(payload.category_breakdown || []);
     renderMovers(payload.account_changes || []);
     renderInstitutions(payload.institution_breakdown || []);
     renderMetrics(payload);

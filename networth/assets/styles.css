@@ -269,8 +269,8 @@ body {
   gap: 16px;
 }
 
-.col-chart {
-  grid-template-columns: 1.6fr 1fr;
+.chart-row {
+  display: block;
 }
 
 .panel-grow { min-width: 0; }
@@ -279,11 +279,7 @@ body {
 .chart-box {
   position: relative;
   width: 100%;
-  height: 280px;
-}
-
-.donut-box {
-  min-height: 280px;
+  height: 320px;
 }
 
 /* ── Tables ── */
@@ -365,83 +361,6 @@ td.right, th.right { text-align: right; }
   font-family: var(--mono);
   font-size: 11px;
   fill: var(--muted);
-}
-
-.donut-shell {
-  display: grid;
-  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
-  gap: 18px;
-  align-items: center;
-}
-
-.donut-figure {
-  position: relative;
-  width: min(240px, 100%);
-  aspect-ratio: 1;
-  margin: 0 auto;
-}
-
-.donut-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.04);
-}
-
-.donut-ring::after {
-  content: "";
-  position: absolute;
-  inset: 24%;
-  border-radius: 50%;
-  background: var(--bg-panel);
-  box-shadow: inset 0 0 0 1px var(--border);
-}
-
-.donut-center {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
-  text-align: center;
-  z-index: 1;
-  padding: 0 40px;
-}
-
-.donut-center .label {
-  font-size: .72rem;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.donut-center .value {
-  margin-top: 6px;
-  font-family: var(--mono);
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-.donut-legend {
-  display: grid;
-  gap: 10px;
-}
-
-.legend-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-}
-
-.legend-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-}
-
-.legend-copy {
-  min-width: 0;
 }
 
 .legend-name {
@@ -564,7 +483,7 @@ td.right, th.right { text-align: right; }
 
   .hero-stat { align-items: flex-start; }
 
-  .two-col, .col-chart {
+  .two-col {
     grid-template-columns: 1fr;
   }
 
@@ -596,8 +515,4 @@ td.right, th.right { text-align: right; }
   }
 
   .panel { padding: 18px; }
-
-  .donut-shell { grid-template-columns: 1fr; }
-
-  .donut-figure { width: min(220px, 100%); }
 }
