@@ -28,6 +28,7 @@
   let cached = null;
   let historyChartInstance = null;
   let donutChartInstance = null;
+  const MIN_CAGR_DAYS = 90;
 
   function esc(value) {
     return String(value)
@@ -253,8 +254,11 @@
             position: "bottom",
             labels: {
               padding: 16,
-              usePointStyle: true,
-              pointStyleWidth: 10,
+              usePointStyle: false,
+              boxWidth: 12,
+              boxHeight: 12,
+              useBorderRadius: true,
+              borderRadius: 999,
               font: { family: "'DM Sans', sans-serif", size: 12 },
               color: "#555",
             },
@@ -343,8 +347,9 @@
       const last = series[series.length - 1].total;
       const d0 = new Date(series[0].date);
       const d1 = new Date(series[series.length - 1].date);
-      const years = (d1 - d0) / (365.25 * 86400000);
-      if (years > 0 && first > 0 && last > 0) {
+      const elapsedDays = (d1 - d0) / 86400000;
+      const years = elapsedDays / 365.25;
+      if (elapsedDays >= MIN_CAGR_DAYS && years > 0 && first > 0 && last > 0) {
         cagr = (Math.pow(last / first, 1 / years) - 1) * 100;
       }
     }
@@ -365,7 +370,10 @@
       {
         label: "Growth Rate (CAGR)",
         value: cagr != null ? `${cagr >= 0 ? "+" : ""}${cagr.toFixed(1)}%` : "n/a",
-        detail: cagr != null ? `${series[0].date} -> ${series[series.length - 1].date}` : "Need more data",
+        detail:
+          cagr != null
+            ? `${series[0].date} -> ${series[series.length - 1].date}`
+            : `Need at least ${MIN_CAGR_DAYS} days of history`,
       },
       {
         label: "Top Concentration",
