@@ -3,106 +3,109 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Net Worth Archive</title>
-  <meta
-    name="description"
-    content="Encrypted static net worth snapshots. Data is decrypted locally in the browser."
+  <title>Net Worth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet"
   />
   <link rel="stylesheet" href="./assets/styles.css" />
 </head>
 <body>
-  <main class="page">
-    <section class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">Encrypted Snapshot Archive</p>
-        <h1>Net Worth</h1>
-        <p class="lede">
-          The published payload is encrypted at build time and decrypted locally in this browser.
-          Nothing sensitive is fetched in plaintext from the public site.
-        </p>
-      </div>
-
-      <form id="unlock-form" class="unlock-card">
-        <div class="unlock-head">
-          <div>
-            <p class="eyebrow">Unlock</p>
-            <h2>Decrypt latest snapshot</h2>
-          </div>
-          <div id="snapshot-date" class="snapshot-date">Loading metadata...</div>
-        </div>
-
-        <label class="field">
-          <span>Password</span>
-          <input id="password-input" type="password" autocomplete="current-password" required />
-        </label>
-
-        <div class="actions">
-          <button type="submit">Decrypt in browser</button>
-          <a class="text-link" href="https://nolanchu.com/">nolanchu.com</a>
-        </div>
-
-        <p id="status" class="status" aria-live="polite"></p>
+  <!-- Pre-decrypt -->
+  <main id="lock-screen" class="lock-screen">
+    <div class="lock-card">
+      <h1>Net Worth</h1>
+      <p class="lock-sub" id="snapshot-date">Loading&hellip;</p>
+      <form id="unlock-form" class="lock-form">
+        <input
+          id="password-input"
+          type="password"
+          placeholder="Password"
+          autocomplete="current-password"
+          required
+        />
+        <button type="submit">Unlock</button>
       </form>
+      <p id="status" class="status" aria-live="polite"></p>
+    </div>
+  </main>
+
+  <!-- Post-decrypt dashboard -->
+  <main id="dashboard" class="dashboard hidden">
+    <section class="hero">
+      <div class="hero-main">
+        <p class="label">Net Worth</p>
+        <h1 id="hero-total" class="hero-amount"></h1>
+        <div id="hero-delta" class="hero-delta"></div>
+      </div>
+      <div class="hero-secondary">
+        <div class="hero-stat">
+          <span class="label">Assets</span>
+          <span id="hero-assets" class="hero-stat-value"></span>
+        </div>
+        <div class="hero-stat">
+          <span class="label">Liabilities</span>
+          <span id="hero-liabilities" class="hero-stat-value"></span>
+        </div>
+        <div class="hero-stat">
+          <span class="label">Snapshot</span>
+          <span id="hero-date" class="hero-stat-value"></span>
+        </div>
+      </div>
     </section>
 
-    <section id="dashboard" class="dashboard hidden" aria-live="polite">
-      <div id="summary" class="summary-grid"></div>
-      <div class="layout">
-        <section class="panel">
-          <div class="panel-head">
-            <h2>History</h2>
-            <div id="history-meta" class="muted"></div>
-          </div>
-          <div id="history-chart"></div>
-        </section>
+    <section id="deltas" class="delta-row"></section>
 
-        <div class="stack">
-          <section class="panel">
-            <div class="panel-head">
-              <h2>Composition</h2>
-            </div>
-            <div id="category-breakdown"></div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-head">
-              <h2>Institutions</h2>
-            </div>
-            <div id="institution-breakdown"></div>
-          </section>
-        </div>
-      </div>
-
-      <div class="layout">
-        <section class="panel">
-          <div class="panel-head">
-            <h2>Recent movers</h2>
-            <div class="muted">Compared with the prior snapshot</div>
-          </div>
-          <div id="movers-table"></div>
-        </section>
-
-        <section class="panel note-panel">
-          <div class="panel-head">
-            <h2>Model</h2>
-          </div>
-          <p>
-            This page is a static shell. The browser downloads an encrypted payload,
-            derives a key from the password you enter, and renders the snapshot entirely client-side.
-          </p>
-        </section>
-      </div>
-
-      <section class="panel">
+    <section class="two-col col-chart">
+      <div class="panel panel-grow">
         <div class="panel-head">
-          <h2>Accounts</h2>
-          <div id="accounts-meta" class="muted"></div>
+          <h2>History</h2>
+          <span id="history-meta" class="meta"></span>
         </div>
-        <div id="accounts-table"></div>
-      </section>
+        <div class="chart-box">
+          <canvas id="history-chart"></canvas>
+        </div>
+      </div>
+      <div class="panel panel-donut">
+        <div class="panel-head">
+          <h2>Allocation</h2>
+        </div>
+        <div class="donut-box">
+          <canvas id="donut-chart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="two-col">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Recent Movers</h2>
+          <span class="meta">vs. prior snapshot</span>
+        </div>
+        <div id="movers-table"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>By Institution</h2>
+        </div>
+        <div id="institution-breakdown"></div>
+      </div>
+    </section>
+
+    <section id="metrics" class="metrics-row"></section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>All Accounts</h2>
+        <span id="accounts-meta" class="meta"></span>
+      </div>
+      <div id="accounts-table" class="table-scroll"></div>
     </section>
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js"></script>
   <script src="./assets/app.js"></script>
 </body>
 </html>

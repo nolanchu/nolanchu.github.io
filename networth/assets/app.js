@@ -1,356 +1,430 @@
 (function () {
-  const encryptedPath = "./encrypted-data.json";
+  const ENCRYPTED_PATH = "./encrypted-data.json";
 
-  const elements = {
-    form: document.getElementById("unlock-form"),
-    passwordInput: document.getElementById("password-input"),
-    status: document.getElementById("status"),
-    snapshotDate: document.getElementById("snapshot-date"),
-    dashboard: document.getElementById("dashboard"),
-    summary: document.getElementById("summary"),
-    historyMeta: document.getElementById("history-meta"),
-    historyChart: document.getElementById("history-chart"),
-    categoryBreakdown: document.getElementById("category-breakdown"),
-    institutionBreakdown: document.getElementById("institution-breakdown"),
-    moversTable: document.getElementById("movers-table"),
-    accountsMeta: document.getElementById("accounts-meta"),
-    accountsTable: document.getElementById("accounts-table"),
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    lockScreen: $("lock-screen"),
+    form: $("unlock-form"),
+    pw: $("password-input"),
+    status: $("status"),
+    snapshotDate: $("snapshot-date"),
+    dashboard: $("dashboard"),
+    heroTotal: $("hero-total"),
+    heroDelta: $("hero-delta"),
+    heroAssets: $("hero-assets"),
+    heroLiabilities: $("hero-liabilities"),
+    heroDate: $("hero-date"),
+    deltas: $("deltas"),
+    historyMeta: $("history-meta"),
+    historyChart: $("history-chart"),
+    donutChart: $("donut-chart"),
+    moversTable: $("movers-table"),
+    instBreakdown: $("institution-breakdown"),
+    metrics: $("metrics"),
+    accountsMeta: $("accounts-meta"),
+    accountsTable: $("accounts-table"),
   };
 
-  let encryptedPayload = null;
+  let cached = null;
 
-  function escapeHtml(value) {
-    return String(value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
+  // ── Helpers ──
+
+  function esc(v) {
+    return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
-  function fmtMoney(value, signed) {
-    const absValue = Math.abs(Number(value));
-    const formatted = absValue.toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    if (signed) {
-      return `${value >= 0 ? "+" : "-"}${formatted}`;
-    }
-    return `${value < 0 ? "-" : ""}${formatted}`;
+  function money(v, signed) {
+    const abs = Math.abs(Number(v));
+    const fmt = abs.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (signed) return `${v >= 0 ? "+" : "\u2212"}${fmt}`;
+    return `${v < 0 ? "\u2212" : ""}${fmt}`;
   }
 
-  function b64ToBytes(value) {
-    const binary = atob(value);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
+  function pct(v) { return `${v.toFixed(1)}%`; }
+
+  function deltaClass(v) {
+    if (v == null || v === "n/a") return "";
+    const s = typeof v === "string" ? v : "";
+    if (typeof v === "number") return v >= 0 ? "up" : "down";
+    return s.startsWith("+") ? "up" : s.startsWith("\u2212") || s.startsWith("-") ? "down" : "";
   }
 
-  async function loadEncryptedPayload() {
-    if (encryptedPayload) {
-      return encryptedPayload;
-    }
-    const response = await fetch(encryptedPath, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch encrypted payload (${response.status})`);
-    }
-    encryptedPayload = await response.json();
-    elements.snapshotDate.textContent = `Snapshot ${encryptedPayload.snapshot_date}`;
-    return encryptedPayload;
+  function b64(v) {
+    const b = atob(v), a = new Uint8Array(b.length);
+    for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
+    return a;
   }
 
-  async function decryptPayload(password) {
-    const payload = await loadEncryptedPayload();
-    const passwordKey = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(password),
-      "PBKDF2",
-      false,
-      ["deriveKey"]
-    );
+  // ── Crypto ──
+
+  async function loadEncrypted() {
+    if (cached) return cached;
+    const r = await fetch(ENCRYPTED_PATH, { cache: "no-store" });
+    if (!r.ok) throw new Error(`Fetch failed (${r.status})`);
+    cached = await r.json();
+    el.snapshotDate.textContent = cached.snapshot_date || "";
+    return cached;
+  }
+
+  async function decrypt(password) {
+    const payload = await loadEncrypted();
+    const raw = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
     const key = await crypto.subtle.deriveKey(
-      {
-        name: "PBKDF2",
-        salt: b64ToBytes(payload.kdf.salt_b64),
-        iterations: payload.kdf.iterations,
-        hash: "SHA-256",
-      },
-      passwordKey,
+      { name: "PBKDF2", salt: b64(payload.kdf.salt_b64), iterations: payload.kdf.iterations, hash: "SHA-256" },
+      raw,
       { name: "AES-GCM", length: 256 },
       false,
       ["decrypt"]
     );
-    const plaintext = await crypto.subtle.decrypt(
-      {
-        name: "AES-GCM",
-        iv: b64ToBytes(payload.cipher.iv_b64),
-      },
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: b64(payload.cipher.iv_b64) },
       key,
-      b64ToBytes(payload.cipher.ciphertext_b64)
+      b64(payload.cipher.ciphertext_b64)
     );
-    return JSON.parse(new TextDecoder().decode(plaintext));
+    return JSON.parse(new TextDecoder().decode(plain));
   }
 
-  function summaryCards(payload) {
-    return [
-      { label: "Net worth", value: fmtMoney(payload.latest_total), className: "hero-total" },
-      { label: "Assets", value: fmtMoney(payload.assets_total) },
-      { label: "Liabilities", value: fmtMoney(payload.liabilities_total) },
-      { label: "Latest snapshot", value: escapeHtml(payload.latest_day) },
-      { label: "Tracked accounts", value: String(payload.accounts.length) },
-      ...payload.stats.map((item) => ({
-        label: item.label,
-        value: item.delta,
-      })),
-    ];
+  // ── Rendering ──
+
+  function renderHero(p) {
+    el.heroTotal.textContent = money(p.latest_total);
+    el.heroAssets.textContent = money(p.assets_total);
+    el.heroLiabilities.textContent = money(p.liabilities_total);
+    el.heroDate.textContent = p.latest_day;
+
+    // Delta badge: since last snapshot
+    const snap = p.stats.find((s) => s.label === "Since last snapshot");
+    if (snap && snap.delta !== "n/a") {
+      const cls = deltaClass(snap.delta);
+      el.heroDelta.className = "hero-delta " + cls;
+      el.heroDelta.textContent = snap.delta + " since last snapshot";
+    } else {
+      el.heroDelta.style.display = "none";
+    }
   }
 
-  function renderSummary(payload) {
-    elements.summary.innerHTML = summaryCards(payload)
-      .map(
-        (item) => `
-          <article class="summary-card ${item.className || ""}">
-            <div class="label">${escapeHtml(item.label)}</div>
-            <div class="value">${escapeHtml(item.value)}</div>
-          </article>
-        `
-      )
+  function renderDeltas(p) {
+    el.deltas.innerHTML = p.stats
+      .map((s) => {
+        const cls = deltaClass(s.delta);
+        return `<div class="delta-card">
+          <div class="label">${esc(s.label)}</div>
+          <div class="value ${cls}">${esc(s.delta)}</div>
+        </div>`;
+      })
       .join("");
   }
 
   function renderHistoryChart(series) {
     if (!series || series.length < 2) {
-      elements.historyChart.innerHTML =
-        '<div class="empty">At least two snapshots are needed before the history curve becomes useful.</div>';
+      el.historyChart.parentElement.innerHTML =
+        '<div class="empty-msg">Need at least two snapshots for a chart.</div>';
       return;
     }
 
-    const width = 960;
-    const height = 320;
-    const leftPad = 36;
-    const rightPad = 18;
-    const topPad = 24;
-    const bottomPad = 38;
-    const innerWidth = width - leftPad - rightPad;
-    const innerHeight = height - topPad - bottomPad;
-    const totals = series.map((point) => point.total);
-    const minTotal = Math.min(...totals);
-    const maxTotal = Math.max(...totals);
-    const spread = Math.max(maxTotal - minTotal, 1);
-    const baseline = topPad + innerHeight;
+    el.historyMeta.textContent = `${series.length} snapshots`;
 
-    const points = series.map((point, index) => {
-      const x = leftPad + (index / Math.max(series.length - 1, 1)) * innerWidth;
-      const y = topPad + (1 - (point.total - minTotal) / spread) * innerHeight;
-      return { x, y, date: point.date, total: point.total };
+    const labels = series.map((d) => d.date);
+    const data = series.map((d) => d.total);
+
+    new Chart(el.historyChart, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          data,
+          borderColor: "#1a6b5a",
+          backgroundColor: "rgba(26,107,90,.08)",
+          fill: true,
+          tension: .3,
+          pointRadius: series.length > 30 ? 0 : 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: "#1a6b5a",
+          pointBorderColor: "#fff",
+          pointBorderWidth: 2,
+          borderWidth: 2.5,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "#1a1a1a",
+            titleColor: "#ccc",
+            bodyColor: "#fff",
+            bodyFont: { family: "'DM Mono', monospace", weight: "500", size: 14 },
+            titleFont: { family: "'DM Sans', sans-serif", size: 12 },
+            padding: 12,
+            cornerRadius: 8,
+            displayColors: false,
+            callbacks: {
+              label: (ctx) => money(ctx.parsed.y),
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxTicksLimit: 6,
+              font: { family: "'DM Mono', monospace", size: 11 },
+              color: "#999",
+            },
+            grid: { display: false },
+            border: { display: false },
+          },
+          y: {
+            ticks: {
+              callback: (v) => money(v),
+              font: { family: "'DM Mono', monospace", size: 11 },
+              color: "#999",
+              maxTicksLimit: 5,
+            },
+            grid: { color: "rgba(0,0,0,.05)" },
+            border: { display: false },
+          },
+        },
+        interaction: { intersect: false, mode: "index" },
+        layout: { padding: { top: 4, bottom: 4 } },
+      },
     });
-
-    const linePath = points
-      .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`)
-      .join(" ");
-    const areaPath = `M ${points[0].x.toFixed(1)} ${baseline.toFixed(1)} ${points
-      .map((point) => `L ${point.x.toFixed(1)} ${point.y.toFixed(1)}`)
-      .join(" ")} L ${points[points.length - 1].x.toFixed(1)} ${baseline.toFixed(1)} Z`;
-
-    const gridLines = [];
-    for (let step = 0; step < 5; step += 1) {
-      const y = topPad + (step / 4) * innerHeight;
-      const value = maxTotal - (step / 4) * (maxTotal - minTotal);
-      gridLines.push(`
-        <line x1="${leftPad}" y1="${y.toFixed(1)}" x2="${width - rightPad}" y2="${y.toFixed(
-        1
-      )}" class="chart-grid" />
-        <text x="0" y="${(y + 4).toFixed(1)}" class="chart-axis">${fmtMoney(value)}</text>
-      `);
-    }
-
-    const pointDots = points
-      .map(
-        (point) =>
-          `<circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="3.5" class="chart-dot" />`
-      )
-      .join("");
-
-    elements.historyChart.innerHTML = `
-      <div class="chart-wrap">
-        <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Net worth history chart">
-          <defs>
-            <linearGradient id="history-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#3d8d7a" stop-opacity="0.38"></stop>
-              <stop offset="100%" stop-color="#3d8d7a" stop-opacity="0.02"></stop>
-            </linearGradient>
-          </defs>
-          ${gridLines.join("")}
-          <path d="${areaPath}" fill="url(#history-fill)"></path>
-          <path d="${linePath}" fill="none" stroke="#184c43" stroke-width="4" stroke-linecap="round"></path>
-          ${pointDots}
-          <text x="${leftPad}" y="${height - 10}" class="chart-axis">${escapeHtml(
-            points[0].date
-          )}</text>
-          <text x="${width - rightPad}" y="${height - 10}" text-anchor="end" class="chart-axis">${escapeHtml(
-            points[points.length - 1].date
-          )}</text>
-        </svg>
-      </div>
-    `;
   }
 
-  function renderBreakdown(container, items, emptyText) {
-    if (!items || !items.length) {
-      container.innerHTML = `<div class="empty">${escapeHtml(emptyText)}</div>`;
-      return;
-    }
+  function renderDonut(categories) {
+    if (!categories || !categories.length) return;
 
-    container.innerHTML = `
-      <table class="breakdown-table">
-        <thead>
-          <tr><th>Group</th><th>Share</th><th>Amount</th></tr>
-        </thead>
-        <tbody>
-          ${items
-            .map(
-              (item) => `
-                <tr>
-                  <td>${escapeHtml(item.label)}</td>
-                  <td>${escapeHtml(`${item.share_pct.toFixed(1)}%`)}</td>
-                  <td class="${item.amount < 0 ? "negative" : ""}">${escapeHtml(
-                fmtMoney(item.amount)
-              )}</td>
-                </tr>
-              `
-            )
-            .join("")}
-        </tbody>
-      </table>
-    `;
+    const palette = ["#1a6b5a", "#2d9b7a", "#72c4a8", "#c0392b", "#e6a03e", "#8e7cc3"];
+    const labels = categories.map((c) => c.label);
+    const data = categories.map((c) => Math.abs(c.amount));
+    const colors = categories.map((_, i) => palette[i % palette.length]);
+
+    new Chart(el.donutChart, {
+      type: "doughnut",
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: colors,
+          borderWidth: 2,
+          borderColor: "#fff",
+          hoverOffset: 6,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: "68%",
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              padding: 16,
+              usePointStyle: true,
+              pointStyleWidth: 10,
+              font: { family: "'DM Sans', sans-serif", size: 12 },
+              color: "#555",
+            },
+          },
+          tooltip: {
+            backgroundColor: "#1a1a1a",
+            bodyColor: "#fff",
+            bodyFont: { family: "'DM Mono', monospace", size: 13 },
+            padding: 10,
+            cornerRadius: 8,
+            displayColors: true,
+            callbacks: {
+              label: (ctx) => {
+                const cat = categories[ctx.dataIndex];
+                return ` ${cat.label}: ${money(cat.amount)} (${pct(cat.share_pct)})`;
+              },
+            },
+          },
+        },
+      },
+    });
   }
 
   function renderMovers(items) {
     if (!items || !items.length) {
-      elements.moversTable.innerHTML =
-        '<div class="empty">More than one snapshot is needed before account-level changes can be shown.</div>';
+      el.moversTable.innerHTML = '<div class="empty-msg">Need more than one snapshot to show movers.</div>';
       return;
     }
 
-    elements.moversTable.innerHTML = `
-      <table class="movers-table">
-        <thead>
-          <tr><th>Account</th><th>Institution</th><th>Move</th><th>Latest</th></tr>
-        </thead>
-        <tbody>
-          ${items
-            .slice(0, 6)
-            .map((item) => {
-              const deltaText = item.delta == null ? "n/a" : fmtMoney(item.delta, true);
-              const deltaClass =
-                item.delta == null ? "" : item.delta >= 0 ? "positive" : "negative";
-              return `
-                <tr>
-                  <td>${escapeHtml(item.account_name)}</td>
-                  <td>${escapeHtml(item.institution)}</td>
-                  <td class="${deltaClass}">${escapeHtml(deltaText)}</td>
-                  <td>${escapeHtml(fmtMoney(item.amount))}</td>
-                </tr>
-              `;
-            })
-            .join("")}
-        </tbody>
-      </table>
-    `;
+    const rows = items.slice(0, 8).map((item) => {
+      const dt = item.delta == null ? "n/a" : money(item.delta, true);
+      const cls = item.delta == null ? "" : item.delta >= 0 ? "positive" : "negative";
+      return `<tr>
+        <td>${esc(item.account_name)}</td>
+        <td>${esc(item.institution)}</td>
+        <td class="${cls}">${esc(dt)}</td>
+        <td class="right">${esc(money(item.amount))}</td>
+      </tr>`;
+    }).join("");
+
+    el.moversTable.innerHTML = `<table>
+      <thead><tr><th>Account</th><th>Institution</th><th>Change</th><th class="right">Balance</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  function renderInstitutions(items) {
+    if (!items || !items.length) {
+      el.instBreakdown.innerHTML = '<div class="empty-msg">No institution data.</div>';
+      return;
+    }
+
+    const maxPct = Math.max(...items.map((i) => Math.abs(i.share_pct)));
+
+    el.instBreakdown.innerHTML = items
+      .map((item) => {
+        const w = maxPct > 0 ? (Math.abs(item.share_pct) / maxPct) * 100 : 0;
+        const amtClass = item.amount < 0 ? "negative" : "";
+        return `<div class="inst-row">
+          <div class="inst-info">
+            <div class="inst-name">${esc(item.label)}</div>
+            <div class="inst-bar-track"><div class="inst-bar-fill" style="width:${w.toFixed(1)}%"></div></div>
+          </div>
+          <div class="inst-values">
+            <div class="inst-amount ${amtClass}">${esc(money(item.amount))}</div>
+            <div class="inst-pct">${esc(pct(item.share_pct))}</div>
+          </div>
+        </div>`;
+      })
+      .join("");
+  }
+
+  function renderMetrics(p) {
+    const assets = p.assets_total || 0;
+    const liabilities = p.liabilities_total || 0;
+    const series = p.series || [];
+
+    // Debt-to-asset ratio
+    const dta = assets > 0 ? (liabilities / assets) : 0;
+
+    // CAGR
+    let cagr = null;
+    if (series.length >= 2) {
+      const first = series[0].total;
+      const last = series[series.length - 1].total;
+      const d0 = new Date(series[0].date);
+      const d1 = new Date(series[series.length - 1].date);
+      const years = (d1 - d0) / (365.25 * 86400000);
+      if (years > 0 && first > 0 && last > 0) {
+        cagr = (Math.pow(last / first, 1 / years) - 1) * 100;
+      }
+    }
+
+    // Largest account concentration
+    let topAcct = null;
+    if (p.accounts && p.accounts.length) {
+      topAcct = p.accounts.reduce((max, a) =>
+        Math.abs(a.share_pct) > Math.abs(max.share_pct) ? a : max
+      , p.accounts[0]);
+    }
+
+    const cards = [
+      {
+        label: "Debt / Asset Ratio",
+        value: (dta * 100).toFixed(1) + "%",
+        detail: `${money(liabilities)} liabilities \u00f7 ${money(assets)} assets`,
+      },
+      {
+        label: "Growth Rate (CAGR)",
+        value: cagr != null ? (cagr >= 0 ? "+" : "") + cagr.toFixed(1) + "%" : "n/a",
+        detail: cagr != null ? `${series[0].date} \u2192 ${series[series.length - 1].date}` : "Need more data",
+      },
+      {
+        label: "Top Concentration",
+        value: topAcct ? pct(Math.abs(topAcct.share_pct)) : "n/a",
+        detail: topAcct ? topAcct.account_name : "",
+      },
+    ];
+
+    el.metrics.innerHTML = cards
+      .map((c) => `<div class="metric-card">
+        <div class="label">${esc(c.label)}</div>
+        <div class="value">${esc(c.value)}</div>
+        <div class="detail">${esc(c.detail)}</div>
+      </div>`)
+      .join("");
   }
 
   function renderAccounts(items) {
     if (!items || !items.length) {
-      elements.accountsTable.innerHTML =
-        '<div class="empty">No account rows were found in the decrypted payload.</div>';
+      el.accountsTable.innerHTML = '<div class="empty-msg">No accounts found.</div>';
       return;
     }
 
-    elements.accountsTable.innerHTML = `
-      <table class="accounts-table">
-        <thead>
-          <tr><th>Account</th><th>Institution</th><th>Type</th><th>Subtype</th><th>Share</th><th>Amount</th></tr>
-        </thead>
-        <tbody>
-          ${items
-            .map(
-              (item) => `
-                <tr>
-                  <td>${escapeHtml(item.account_name)}</td>
-                  <td>${escapeHtml(item.institution)}</td>
-                  <td>${escapeHtml(item.account_type)}</td>
-                  <td>${escapeHtml(item.account_subtype)}</td>
-                  <td>${escapeHtml(`${item.share_pct.toFixed(1)}%`)}</td>
-                  <td class="${item.amount < 0 ? "negative" : ""}">${escapeHtml(
-                fmtMoney(item.amount)
-              )}</td>
-                </tr>
-              `
-            )
-            .join("")}
-        </tbody>
-      </table>
-    `;
+    el.accountsMeta.textContent = `${items.length} accounts`;
+
+    const rows = items
+      .map((a) => {
+        const cls = a.amount < 0 ? "negative" : "";
+        return `<tr>
+          <td>${esc(a.account_name)}</td>
+          <td>${esc(a.institution)}</td>
+          <td>${esc(a.account_type)}</td>
+          <td class="right">${esc(pct(a.share_pct))}</td>
+          <td class="right ${cls}">${esc(money(a.amount))}</td>
+        </tr>`;
+      })
+      .join("");
+
+    el.accountsTable.innerHTML = `<table>
+      <thead><tr><th>Account</th><th>Institution</th><th>Type</th><th class="right">Share</th><th class="right">Balance</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
   }
 
-  function renderPayload(payload) {
-    renderSummary(payload);
-    renderHistoryChart(payload.series || []);
-    renderBreakdown(
-      elements.categoryBreakdown,
-      payload.category_breakdown || [],
-      "No category breakdown was found in the snapshot."
-    );
-    renderBreakdown(
-      elements.institutionBreakdown,
-      payload.institution_breakdown || [],
-      "No institution breakdown was found in the snapshot."
-    );
-    renderMovers(payload.account_changes || []);
-    renderAccounts(payload.accounts || []);
+  // ── Main render ──
 
-    elements.historyMeta.textContent = `${payload.series.length} snapshots from ${payload.first_day} to ${payload.latest_day}`;
-    elements.accountsMeta.textContent = `${payload.accounts.length} accounts in the latest snapshot`;
-    elements.dashboard.classList.remove("hidden");
+  function renderAll(p) {
+    renderHero(p);
+    renderDeltas(p);
+    renderHistoryChart(p.series || []);
+    renderDonut(p.category_breakdown || []);
+    renderMovers(p.account_changes || []);
+    renderInstitutions(p.institution_breakdown || []);
+    renderMetrics(p);
+    renderAccounts(p.accounts || []);
+
+    el.lockScreen.classList.add("hidden");
+    el.dashboard.classList.remove("hidden");
   }
 
-  function setStatus(message, isError) {
-    elements.status.textContent = message;
-    elements.status.classList.toggle("error", Boolean(isError));
+  function setStatus(msg, err) {
+    el.status.textContent = msg;
+    el.status.classList.toggle("error", !!err);
   }
 
-  elements.form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const password = elements.passwordInput.value;
-    if (!password) {
-      return;
-    }
+  // ── Events ──
 
-    if (!window.crypto || !window.crypto.subtle) {
-      setStatus("This browser does not support the Web Crypto APIs needed for decryption.", true);
+  el.form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const pw = el.pw.value;
+    if (!pw) return;
+
+    if (!window.crypto?.subtle) {
+      setStatus("Browser doesn't support Web Crypto.", true);
       return;
     }
 
     try {
-      setStatus("Decrypting snapshot locally...", false);
-      const payload = await decryptPayload(password);
-      renderPayload(payload);
-      setStatus(`Decrypted snapshot ${payload.latest_day}.`, false);
-      elements.passwordInput.value = "";
-    } catch (error) {
-      console.error(error);
-      setStatus("Decryption failed. The password is wrong or the published payload is invalid.", true);
+      setStatus("Decrypting\u2026");
+      const p = await decrypt(pw);
+      renderAll(p);
+      el.pw.value = "";
+    } catch (err) {
+      console.error(err);
+      setStatus("Wrong password or corrupted payload.", true);
     }
   });
 
-  loadEncryptedPayload().catch((error) => {
-    console.error(error);
-    elements.snapshotDate.textContent = "Metadata unavailable";
-    setStatus("The encrypted payload could not be loaded from this static site.", true);
+  loadEncrypted().catch((err) => {
+    console.error(err);
+    el.snapshotDate.textContent = "Unavailable";
+    setStatus("Could not load encrypted payload.", true);
   });
 })();
