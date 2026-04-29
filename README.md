@@ -1,21 +1,17 @@
-# Nolan Chu
-
-<img src="headshot.jpg" alt="Nolan Chu" width="180" style="border-radius: 8px; float: right; margin-left: 20px; margin-bottom: 10px;">
-
 MS Computer Science (Thesis Track), Virginia Tech
 [HEAP Lab](https://heap.cs.vt.edu/) · Advised by [Prof. Xun Jian](https://people.cs.vt.edu/xunj/)
 
 nolanchu@vt.edu · [GitHub](https://github.com/nolanchu) · [CV](/cv.pdf)
 
-<div style="clear: both;"></div>
-
 ---
 
-## About
+<img src="headshot.jpg" alt="Nolan Chu" width="170" style="border-radius: 6px; float: left; margin-right: 20px; margin-bottom: 10px;">
 
 I am a master's student at Virginia Tech in the Computer Science department, advised by [Prof. Xun Jian](https://people.cs.vt.edu/xunj/). My research (so far) has been in computer architecture, specifically hardware memory compression: devising specialized compression hardware to expand effective DRAM capacity by 3-4x. My work spans compression algorithms, hardware accelerator design, and the memory subsystem. More broadly, I'm drawn to challenging problems at the intersection of algorithms and computer architecture, where solutions require great ideas paired with great execution.
 
 I did my BS in Computer Science (with a math minor) at Virginia Tech, graduating with a 4.0. In summer 2026, I'll be joining [AMD Research & Advanced Development](https://www.amd.com/en/corporate/research.html) as a research associate working on compression.
+
+<div style="clear: both;"></div>
 
 ## Publication
 
